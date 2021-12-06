@@ -5,7 +5,8 @@ const ONE_DIM:usize = 5;
 const WIDTH:usize = ONE_DIM * ONE_DIM;
 
 struct Matrix{
-    data: [i32; WIDTH]
+    data: [i32; WIDTH],
+    is_solved: bool
 }
 impl Matrix{
     fn new(raw_data: &str) -> Self {
@@ -21,8 +22,13 @@ impl Matrix{
         }
         assert_eq!(i, WIDTH, "wrong umber of items");
         return Matrix{
-            data: data
+            data: data,
+            is_solved: false
         };
+    }
+
+    fn mark_as_solved(&mut self){
+        self.is_solved = true;
     }
 
     fn get(&self, row:usize, col:usize) -> i32{
@@ -39,8 +45,6 @@ impl Matrix{
                     continue 'outer;
                 }
             }
-            
-            println!("Found at row  {} ",row);
             return true;
         }
         'outer1: for col in 0..ONE_DIM {
@@ -53,7 +57,6 @@ impl Matrix{
                 }
             }
             
-            println!("Found at col  {} ",col);
             return true;
         }
         return false;
@@ -87,39 +90,20 @@ fn main() {
         
     }
     let mut chosen_numbers: Vec<i32> = Vec::new();
-    let mut done: Vec<[i32; WIDTH]> = Vec::new();
     for lot in chosen{
         chosen_numbers.push(lot);
-        for m in &matices{
-            if done.contains(&m.data){
-                continue;
-            }
+        for m in matices.iter_mut().filter(|m| !m.is_solved){
             if m.is_solution(&chosen_numbers){
-                
+                m.mark_as_solved();
                 println!("|{}|",lot);
                 
                 println!("|{:?}|", m.data);
                 println!("|{:?}|", &chosen_numbers);
-                let mut prod:i32 = 0;
-                for n in m.data{
-                    if !chosen_numbers.contains(&n){
-                     println!("|{}*{}|",prod, n);
-                        prod = prod + n
-                    }
-                }
+                let sum:i32 = m.data.iter().filter(|n| !chosen_numbers.contains(n)).sum();
                 
-                println!("Result |{}|",prod * lot);
-
-                //TODO remove
-                done.push(m.data)
+                println!("Result |{}|",sum * lot);
             }
         }
 
     }
-
-    println!("Part1  {} ",matices.len());
-    println!("Part1  {} ",matices[0].is_solution(&vec![14, 86, 50, 89, 49]));
-    println!("Part1  {} ",matices[0].is_solution(&vec![14, 86, 50, 100, 89, 49]));
-    println!("Part1  {} ",matices[1].is_solution(&vec![14, 86, 45, 89, 49]));
-
 }
