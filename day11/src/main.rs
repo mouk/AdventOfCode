@@ -6,7 +6,8 @@ struct Octopuses {
     data: Vec<Vec<u32>>,
     columns: usize,
     rows: usize,
-    flashes_count: usize
+    flashes_count: usize,
+    steps_count: usize,
 }
 
 impl Octopuses {
@@ -24,6 +25,7 @@ impl Octopuses {
             columns: columns,
             rows: rows,
             flashes_count: 0,
+            steps_count: 0
         };
     }
 
@@ -31,7 +33,7 @@ impl Octopuses {
         self.data[row][col]
     }
 
-    fn run_step(&mut self) {
+    fn run_step(&mut self) -> usize{
         let mut flashed = HashSet::new();
         for col in 0..self.columns {
             for row in 0..self.rows {
@@ -60,11 +62,13 @@ impl Octopuses {
                 }
             }
         }
-        self.flashes_count += &flashed.len();
+        let flash_count =  flashed.len();
+        self.flashes_count +=flash_count;
         for (row, col) in flashed {
             self.data[row][col] = 0
         }
-        
+        self.steps_count += 1;
+        flash_count
     }
     fn get_neighbors(&mut self, row: usize, col: usize) -> Vec<(usize, usize)> {
         let mut result: Vec<(usize, usize)> = Vec::new();
@@ -107,5 +111,13 @@ fn main() {
     octos.print();
 
     println!("Part 1 {}", octos.flashes_count);
+    loop {
+        let flashes = octos.run_step();
+        if flashes ==  octos.columns * octos.rows{
+            println!("Part 2 {}", octos.steps_count);
+            break;
+        }
+
+    }
 
 }
