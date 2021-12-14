@@ -114,6 +114,7 @@ fn main() {
     loop {
         let flashes = octos.run_step();
         if flashes ==  octos.columns * octos.rows{
+            octos.print();
             println!("Part 2 {}", octos.steps_count);
             break;
         }
