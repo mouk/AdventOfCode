@@ -1,14 +1,17 @@
 use std::fs;
 
 use std::collections::HashMap;
+use std::path::Path;
 
-fn read_input()-> HashMap<String,Vec<String>>{
-    let content = fs::read_to_string("./src/input.txt")
-    .expect("war richtig");
+fn read_edges<P>(path: P) -> HashMap<String, Vec<String>> 
+where P: AsRef<Path>
+{
 
-    let mut result:HashMap<String,Vec<String>> = HashMap::new();
-    for line in content.split("\r\n"){
-        let nodes:Vec<&str> = line.split('-').collect();
+    let content = fs::read_to_string(path).expect("war richtig");
+
+    let mut result: HashMap<String, Vec<String>> = HashMap::new();
+    for line in content.split("\r\n") {
+        let nodes: Vec<&str> = line.split('-').collect();
         let entry = result.entry(nodes[0].to_string()).or_insert(Vec::new());
         entry.push(nodes[1].to_string());
 
@@ -17,72 +20,77 @@ fn read_input()-> HashMap<String,Vec<String>>{
     }
     result
 }
-
-fn can_be_visited_simple(name: &String, path:&Vec<String>) -> bool{
-    if *name == "start"{
+fn can_be_visited(name: &String, path: &Vec<String>, complex:bool) -> bool {
+    if *name == "start" {
         return false;
     }
-    if name.to_uppercase() == *name || !path.contains(name){
+    if name.to_uppercase() == *name || !path.contains(name) {
         return true;
     }
-    return false;
-}
-fn can_be_visited(name: &String, path:&Vec<String>) -> bool{
-    if *name == "start"{
+    if !complex{
         return false;
     }
-    if name.to_uppercase() == *name || !path.contains(name){
-        return true;
-    }
-    let mut copy = path.clone();
-    copy.dedup();
-    copy.len() == path.len()
-
-}
-fn dfs<P>(map: &HashMap<String,Vec<String>>, path:Vec<String>, results:&mut Vec<Vec<String>>, pred: &P)
-where
-  P: Fn(&String, &Vec<String>) -> bool{
-    let start = path.last().unwrap().clone();
-    let possible_targets = map.get(&start);
-    match possible_targets {
-        Some(v) => {
-            for next in v.into_iter().filter(|x| pred(x, &path)) {
-                let mut copy = path.clone();
-                copy.push(next.clone());
-                if next == "end"{
-                    results.push(copy);
-                }
-                else {
-                    dfs(map,copy,results, pred);
-                }
-            }  
+    for first in 0..(path.len()-1){
+        if path[first] != path[first] .to_uppercase(){   
+        for second in (first+1)..path.len(){
+            if path[first] == path[second]{
+                return false;
+            }
         }
-        None => {}       
-    }   
+    }
+    }
+    return true;
+}
+fn dfs(map: &HashMap<String, Vec<String>>, complex:bool) -> usize
+{
+    let mut full_path_count:usize= 0;
+    let mut stack = vec![vec!["start".to_string()]];
+
+    while let Some(p) = stack.pop() {
+        let start = p.last().unwrap();
+        match map.get(start) {
+            Some(candidates) => {
+                for next in candidates.into_iter().filter(|x| can_be_visited(x, &p, complex)) {
+                    if next == "end" {
+                        full_path_count += 1;
+                    } else {
+                        let mut copy = p.clone();
+                        copy.push(next.clone());
+                        stack.push(copy);
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    full_path_count
 }
 
-fn print_result(results:&Vec<Vec<String>>){
-    for r in results{
-        println!("->{:?}", r);
-    }
+
+#[test]
+fn part1_simple_algorithm() {
+    let map = read_edges("src/test.txt");
+    assert_eq!( dfs(&map, false), 226);
+    
+    let actual_map = read_edges("src/input.txt");
+    assert_eq!( dfs(&actual_map, false), 3450);
+}
+
+
+#[test]
+fn part2_complex_algorithm() {
+    let map = read_edges("src/test.txt");
+    assert_eq!( dfs(&map, true), 3509);
 }
 
 fn main() {
-    let map = read_input();
-    let start = vec!["start".to_string()];
-    let mut results:Vec<Vec<String>> = Vec::new();
-    dfs(&map,start,&mut results, &can_be_visited_simple);
-
-    print_result(&results);
-    println!("Part 1 {:?}", results.len());
-
-
-    /* Stackoverflow */
     
-    let start = vec!["start".to_string()];
-    let mut results:Vec<Vec<String>> = Vec::new();
-    dfs(&map,start,&mut results, &can_be_visited);
+    let map = read_edges("src/input.txt");
 
-    print_result(&results);
-    println!("Part 2 {:?}", results.len());
+    let results = dfs(&map, false);
+
+    println!("Part 1 {:?}", results);
+    let results = dfs(&map,true);
+
+    println!("Part 2 {:?}", results);
 }
