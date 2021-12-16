@@ -46,7 +46,7 @@ fn applay_instruction(
 fn applay_instructions(
     points: HashSet<(usize, usize)>,
     instructions: Vec<FoldInstruction>,
-) -> usize {
+) -> HashSet<(usize, usize)> {
     let mut myp = points;
     println!("{:?}", &myp);
     for ins in instructions {
@@ -55,7 +55,24 @@ fn applay_instructions(
     
     println!("End result");
     println!("{:?}", &myp);
-    myp.len()
+    myp
+}
+
+fn print(points: &HashSet<(usize, usize)>){
+    let max_x = *points.iter().map(|(x,_)| x).max().unwrap();
+    let max_y = *points.iter().map(|(_,y)| y).max().unwrap();
+
+    for y in 0..=max_y{
+        for x in 0..=max_x{
+            let c = match points.get(&(x,y)){
+                Some(_)=> "#",
+                _=> "."
+            };
+            print!("{}", c)
+        }
+        println!("")
+    }
+
 }
 
 fn read_edges<P>(path: P) -> (HashSet<(usize, usize)>, Vec<FoldInstruction>)
@@ -96,7 +113,7 @@ fn main() {
     
     let (points, instructions) = read_edges("src/input.txt");
     let result = applay_instructions(points, instructions);
-    println!("Part2 {:?}", result);
+    print( &result);
 }
 
 #[test]
@@ -114,5 +131,5 @@ fn part1() {
 #[test]
 fn part2() {
     let (points, instructions) = read_edges("src/test.txt");
-    assert_eq!(applay_instructions(points, instructions), 16);
+    assert_eq!(applay_instructions(points, instructions).len(), 16);
 }
