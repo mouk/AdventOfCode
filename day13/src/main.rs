@@ -1,78 +1,62 @@
 use std::{collections::HashSet, fs, path::Path};
 
 #[derive(Debug)]
-enum Axe {
-    X,
-    Y,
+enum FoldInstruction {
+    X(usize),
+    Y(usize),
+}
+fn fold(p: usize, at: usize) -> usize {
+    if p < at {
+        return p;
+    }
+    return 2 * at - p;
 }
 
-#[derive(Debug)]
-struct FoldInstruction {
-    at: usize,
-    axe: Axe,
-}
-
-fn applay_instruction(
+fn apply_instruction(
     points: HashSet<(usize, usize)>,
     ins: &FoldInstruction,
 ) -> HashSet<(usize, usize)> {
-    let transformed: Vec<(usize, usize)> = match ins.axe {
-        Axe::X => points
-            .iter()
-            .filter(|(x, _)| *x != ins.at)
-            .map(|(x, y)| {
-                let new_x = match *x < ins.at {
-                    true => *x,
-                    _ => (2 * ins.at) - *x,
-                };
-                (new_x, *y)
-            })
-            .collect(),
-        Axe::Y => points
-            .iter()
-            .filter(|(_, y)| *y != ins.at)
-            .map(|(x, y)| {
-                let new_y = match *y < ins.at {
-                    true => *y,
-                    _ => (2 * ins.at) -*y,
-                };
-                (*x, new_y)
-            })
-            .collect(),
-    };
+    let transformed = points.iter().map(|(x, y)| match ins {
+        FoldInstruction::X(at) => (fold(*x, *at), *y),
+        FoldInstruction::Y(at) => (*x, fold(*y, *at)),
+    });
+
     HashSet::from_iter(transformed)
 }
 
-fn applay_instructions(
+fn apply_instructions(
     points: HashSet<(usize, usize)>,
     instructions: Vec<FoldInstruction>,
 ) -> HashSet<(usize, usize)> {
     let mut myp = points;
-    println!("{:?}", &myp);
     for ins in instructions {
-        myp = applay_instruction(myp, &ins);
+        myp = apply_instruction(myp, &ins);
     }
-    
-    println!("End result");
-    println!("{:?}", &myp);
     myp
 }
 
-fn print(points: &HashSet<(usize, usize)>){
-    let max_x = *points.iter().map(|(x,_)| x).max().unwrap();
-    let max_y = *points.iter().map(|(_,y)| y).max().unwrap();
+fn print(points: &HashSet<(usize, usize)>) {
+    let max_x = *points.iter().map(|(x, _)| x).max().unwrap();
+    let max_y = *points.iter().map(|(_, y)| y).max().unwrap();
 
-    for y in 0..=max_y{
-        for x in 0..=max_x{
-            let c = match points.get(&(x,y)){
-                Some(_)=> "#",
-                _=> "."
+    // 8 letters
+    let seperator_after = (max_x +1) / 7; 
+    
+    println!("");
+    for y in 0..=max_y {
+        for x in 0..=max_x {
+            let c = match points.get(&(x, y)) {
+                Some(_) => "#",
+                _ => " ",
             };
-            print!("{}", c)
+            print!("{}", c);
+            if (x+1)% seperator_after == 0 {
+                print!("\t");
+            }
         }
         println!("")
     }
-
+    println!("");
 }
 
 fn read_edges<P>(path: P) -> (HashSet<(usize, usize)>, Vec<FoldInstruction>)
@@ -80,25 +64,22 @@ where
     P: AsRef<Path>,
 {
     let content = fs::read_to_string(path).expect("war richtig");
-    let mut parts = content.split("\r\n\r\n");
-    let points = parts.next().unwrap().split("\r\n").map(|line| {
+    let (points, instructions) = content.split_once("\r\n\r\n").unwrap();
+    let points = points.split("\r\n").map(|line| {
         let mut co = line.split(",").map(|x| x.parse::<usize>().unwrap());
 
         return (co.next().unwrap(), co.next().unwrap());
     });
 
-    let ins = parts
-        .next()
-        .unwrap()
+    let ins = instructions
         .split("\r\n")
         .map(|line| {
-            let mut components = line.split("=");
-            let axe = match components.next().unwrap() {
-                "fold along y" => Axe::Y,
-                _ => Axe::X,
-            };
-            let at = components.next().unwrap().parse::<usize>().unwrap();
-            FoldInstruction { at, axe }
+            let (axe, at) = line.split_once("=").unwrap();
+            let at = at.parse::<usize>().unwrap();
+            match axe {
+                "fold along y" => FoldInstruction::Y(at),
+                _ => FoldInstruction::X(at),
+            }
         })
         .collect();
 
@@ -107,29 +88,30 @@ where
 
 fn main() {
     let (points, instructions) = read_edges("src/input.txt");
-    let result = applay_instruction(points, &instructions[0]).len();
+    let result = apply_instruction(points, &instructions[0]).len();
     println!("Part1 {:?}", result);
 
-    
     let (points, instructions) = read_edges("src/input.txt");
-    let result = applay_instructions(points, instructions);
-    print( &result);
+    let result = apply_instructions(points, instructions);
+    print(&result);
 }
 
 #[test]
 fn part1() {
     let (points, instructions) = read_edges("src/test.txt");
-    let result = applay_instruction(points, &instructions[0]).len();
+    let result = apply_instruction(points, &instructions[0]).len();
     assert_eq!(result, 17);
 
     let (points, instructions) = read_edges("src/input.txt");
-    let result = applay_instruction(points, &instructions[0]).len();
+    let result = apply_instruction(points, &instructions[0]).len();
     assert_eq!(result, 729);
-
 }
 
 #[test]
 fn part2() {
     let (points, instructions) = read_edges("src/test.txt");
-    assert_eq!(applay_instructions(points, instructions).len(), 16);
+    assert_eq!(apply_instructions(points, instructions).len(), 16);
+
+    let (points, instructions) = read_edges("src/input.txt");
+    assert_eq!(apply_instructions(points, instructions).len(), 100);
 }
