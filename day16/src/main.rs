@@ -22,7 +22,7 @@ fn read_literal(bits: &BitSlice<Msb0, u8>) -> (u64, &BitSlice<Msb0, u8>) {
         remaing = s_remaing;
         let (last, num_chunk) = new_chunk.split_at(1);
         let is_last = last.load_be::<u8>() == 0;
-        value = (value << 4) + num_chunk.load_be::<u8>() as u64;
+        value = (value << 4) + num_chunk.load_be::<u64>();
         if is_last {
             break;
         }
@@ -30,6 +30,42 @@ fn read_literal(bits: &BitSlice<Msb0, u8>) -> (u64, &BitSlice<Msb0, u8>) {
     (value, remaing)
 }
 impl Packet {
+    fn eval(&self) -> u64 {
+        match &self.sub_packets {
+            PacketKind::Literal(v) => *v,
+            PacketKind::Op(packs) => match self.type_id {
+                0 => packs.iter().map(Packet::eval).sum(),
+                1 => packs.iter().map(Packet::eval).product(),
+                2 => packs.iter().map(Packet::eval).min().unwrap(),
+                3 => packs.iter().map(Packet::eval).max().unwrap(),
+                5 => {
+                    assert_eq!(packs.len(), 2);
+                    if packs[0].eval() > packs[1].eval() {
+                        1
+                    } else {
+                        0
+                    }
+                }
+                6 => {
+                    assert_eq!(packs.len(), 2);
+                    if packs[0].eval() < packs[1].eval() {
+                        1
+                    } else {
+                        0
+                    }
+                }
+                7 => {
+                    assert_eq!(packs.len(), 2);
+                    if packs[0].eval() == packs[1].eval() {
+                        1
+                    } else {
+                        0
+                    }
+                }
+                _ => panic!("should not happen"),
+            },
+        }
+    }
     fn sum_version(&self) -> u32 {
         let ver = self.version as u32;
         match &self.sub_packets {
@@ -141,10 +177,11 @@ enum PacketKind {
 
 fn main() {
     let packet = Packet::new_from_file("src/input.txt");
-    println!("{:?}", &packet.sum_version());
+    println!("Part1 {:?}", &packet.sum_version());
 
-    //let packet = Packet::new_from_string("620080001611562C8802118E34".to_string());
-    println!("{:?}", &packet.sum_version());
+    //let packet = Packet::new_from_string("9C005AC2F8F0".to_string());
+
+    println!("Eval:{}, Struktur: {:?}", &packet.eval(), &packet);
 }
 
 #[test]
@@ -229,3 +266,74 @@ fn test_620080001611562C8802118E34() {
 
     assert_eq!(packet.sum_version(), 12);
 }
+
+#[test]
+fn test_C0015000016115A2E0802F182340() {
+    let packet = Packet::new_from_string("C0015000016115A2E0802F182340".to_string());
+
+    assert_eq!(packet.sum_version(), 23);
+}
+
+#[test]
+fn test_A0016C880162017C3686B18A3D4780() {
+    let packet = Packet::new_from_string("A0016C880162017C3686B18A3D4780".to_string());
+
+    assert_eq!(packet.sum_version(), 31);
+}
+
+#[test]
+fn test_C200B40A82() {
+    let packet = Packet::new_from_string("C200B40A82".to_string());
+
+    assert_eq!(packet.eval(), 3);
+}
+
+#[test]
+fn test_04005AC33890() {
+    let packet = Packet::new_from_string("04005AC33890".to_string());
+
+    assert_eq!(packet.eval(), 54);
+}
+#[test]
+fn test_880086C3E88112() {
+    let packet = Packet::new_from_string("880086C3E88112".to_string());
+
+    assert_eq!(packet.eval(), 7);
+}
+
+#[test]
+fn test_CE00C43D881120() {
+    let packet = Packet::new_from_string("CE00C43D881120".to_string());
+
+    assert_eq!(packet.eval(), 9);
+}
+
+#[test]
+fn test_D8005AC2A8F0() {
+    let packet = Packet::new_from_string("D8005AC2A8F0".to_string());
+
+    assert_eq!(packet.eval(), 1);
+}
+
+#[test]
+fn test_F600BC2D8F() {
+    let packet = Packet::new_from_string("F600BC2D8F".to_string());
+
+    assert_eq!(packet.eval(), 0);
+}
+
+#[test]
+fn test_9C005AC2F8F0() {
+    let packet = Packet::new_from_string("9C005AC2F8F0".to_string());
+
+    assert_eq!(packet.eval(), 0);
+}
+
+#[test]
+fn test_9C0141080250320F1802104A08() {
+    let packet = Packet::new_from_string("9C0141080250320F1802104A08".to_string());
+
+    assert_eq!(packet.eval(), 1);
+}
+
+//180616639580
