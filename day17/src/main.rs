@@ -42,6 +42,16 @@ impl Projectile {
 }
 
 impl TargetArea {
+    fn new_from_corners(min_x: i32, max_x: i32, min_y: i32, max_y: i32) -> Self {
+        assert!(min_x < max_x);
+        assert!(min_y < max_y);
+        TargetArea {
+            min_x,
+            max_x,
+            min_y,
+            max_y,
+        }
+    }
     fn contains(&self, p: &Projectile) -> bool {
         let x = p.position.0;
         let y = p.position.1;
@@ -70,8 +80,8 @@ impl TargetArea {
         let max_y = max(self.max_y.abs(), self.min_y.abs());
         println!("max x {}, max y {}", max_x, &max_y);
 
-        for x in 2..max_x {
-            for y in (-max_y)..max_y {
+        for x in 2..(max_x + 1) {
+            for y in (-max_y - 1)..(max_y + 1) {
                 let p = Projectile::new_from_coordinates(x, y);
                 if let Some(p) = self.run_projectile_through(p) {
                     //println!("New Point {:?}", p);
@@ -88,29 +98,30 @@ impl TargetArea {
     }
 }
 fn main() {
-    let area = TargetArea {
-        min_x: 192,
-        max_x: 251,
-        min_y: -89,
-        max_y: -59,
-    };
+    let area = TargetArea::new_from_corners(192, 251, -89, -59);
 
     let highest = area.get_highest_trajectory();
 
-    println!("result  {:?}", highest);
+    println!("Part1  {:?}", highest);
+
+    let all = area.find_all();
+
+    println!("Part2  {:?}", all.len());
 }
 
 #[test]
 fn test_part1() {
-    let area = TargetArea {
-        min_x: 20,
-        max_x: 30,
-        min_y: -10,
-        max_y: -5,
-    };
-
+    let area = TargetArea::new_from_corners(20, 30, -10, -5);
     let highest = area.get_highest_trajectory();
     assert_eq!(highest.highest_y, 45)
+}
+
+#[test]
+fn test_part2() {
+    let area = TargetArea::new_from_corners(20, 30, -10, -5);
+
+    let all = area.find_all();
+    assert_eq!(all.len(), 112)
 }
 
 #[test]
