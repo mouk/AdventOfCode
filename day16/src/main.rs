@@ -40,7 +40,7 @@ impl Packet {
                 3 => packs.iter().map(Packet::eval).max().unwrap(),
                 5 => {
                     assert_eq!(packs.len(), 2);
-                    if packs[0].eval() > packs[1].eval() {
+                    if packs[1].eval() > packs[1].eval() {
                         1
                     } else {
                         0
