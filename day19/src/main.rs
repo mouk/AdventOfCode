@@ -7,6 +7,28 @@ struct Permutation {
     factors: [i32; 3],
 }
 
+struct Scan {
+    beacons: Vec<HashSet<Pos>>,
+    sensors: Vec<Vec<Pos>>,
+}
+
+impl Scan {
+    /*
+    fn len(&self) -> usize {
+
+        self.beacons[0].len()
+    }
+     */
+
+    fn sets_count(&self) -> usize {
+        self.beacons.len()
+    }
+
+    fn sensors_count(&self) -> usize {
+        self.sensors.iter().map(Vec::len).sum()
+    }
+}
+
 #[derive(Debug, Clone)]
 struct LinearMap {
     permutation: Permutation,
@@ -16,11 +38,10 @@ struct LinearMap {
 type Pos = (i32, i32, i32); // [i32; 3];
 const TEST_DATA: &str = include_str!("test.txt");
 const INPUT_DATA: &str = include_str!("input.txt");
-const MIN_MATCHES_COUNT: usize = 12;
-const THREAD_HOLD: usize = (MIN_MATCHES_COUNT * (MIN_MATCHES_COUNT - 1)) / 2;
 
-fn parse(text: &str) -> Vec<HashSet<Pos>> {
-    text.split("\n\n")
+fn parse(text: &str) -> Scan {
+    let beacons = text
+        .split("\n\n")
         .into_iter()
         .map(|chunk| {
             chunk
@@ -34,7 +55,23 @@ fn parse(text: &str) -> Vec<HashSet<Pos>> {
                 })
                 .collect::<HashSet<_>>()
         })
-        .collect::<Vec<HashSet<_>>>()
+        .collect::<Vec<HashSet<_>>>();
+    let sensors = (0..beacons.len())
+        .map(|_| vec![(0, 0, 0)])
+        .collect::<Vec<Vec<Pos>>>();
+
+    assert_eq!(
+        beacons.len(),
+        sensors.len(),
+        "there must be as many sensors an beacons sets"
+    );
+
+    assert!(
+        sensors.iter().all(|s| s.len() == 1),
+        "At the beginning every set has one sensor"
+    );
+
+    Scan { sensors, beacons }
 }
 /*
 fn distance(p1: &Pos, p2: &Pos) -> u64 {
@@ -63,27 +100,54 @@ fn all_permutations() -> Vec<Permutation> {
 
 fn main() {
     let d = parse(INPUT_DATA);
-    let old_count = d.len();
-    let mut last_count = old_count;
-    let mut new_result = combine(d);
+    let (combined_result, _) = combine_to_one(d, 12);
 
-    while new_result.len() < last_count && new_result.len() > 1 {
-        last_count = new_result.len();
-        new_result = combine(new_result);
+    println!("Numer of distinct beacons {}", combined_result.len());
+}
+
+fn combine_to_one(scan: Scan, min_matches: usize) -> (HashSet<Pos>, Vec<Pos>) {
+    let old_count = scan.sensors_count();
+
+    println!("old count {:?}", old_count);
+    println!("starting Sensors {:?}", &scan.sensors);
+    let mut new_result = scan;
+
+    loop {
+        let last_count = new_result.sets_count();
+        new_result = combine(new_result, min_matches);
+
+        println!("Sensors {:?}", new_result.sensors);
+        let sensor_count: usize = new_result.sensors_count();
+        assert_eq!(
+            sensor_count, old_count,
+            "The total number of sensor shouldn't change"
+        );
+
+        if new_result.sets_count() >= last_count || new_result.sets_count() == 1 {
+            break;
+        }
     }
 
-    assert_eq!(new_result.len(), 1);
     println!(
         "Number of distinct sets was reduced from  {} to {}",
         old_count,
-        new_result.len()
+        new_result.sets_count()
     );
 
-    println!("Numer of distinct beacons {}", new_result[0].len());
+    assert_eq!(new_result.sets_count(), 1, "Didn't finish");
+    (
+        new_result.beacons.pop().unwrap(),
+        new_result.sensors.pop().unwrap(),
+    )
 }
-fn combine(d: Vec<HashSet<Pos>>) -> Vec<HashSet<Pos>> {
+fn combine(scan: Scan, min_matches: usize) -> Scan {
+    let d = scan.beacons;
+    let sensors = scan.sensors;
+
+    let threash_hold = choose_2_count(min_matches);
     let mut merged = HashSet::new();
     let mut result = Vec::new();
+    let mut result_sensors = Vec::new();
     let distances = d
         .iter()
         .map(|sensor| {
@@ -95,14 +159,12 @@ fn combine(d: Vec<HashSet<Pos>>) -> Vec<HashSet<Pos>> {
         })
         .collect::<Vec<_>>();
 
-    println!("distances {:?} {:?}", distances, distances[0].len());
-
     let candidates = distances
         .iter()
         .enumerate()
         .tuple_combinations()
         .filter(|((_, set1), (_, set2))| {
-            return set1.intersection(set2).count() >= THREAD_HOLD;
+            return set1.intersection(set2).count() >= threash_hold;
         })
         .map(|((x, _), (y, _))| (x, y))
         .collect::<Vec<(usize, usize)>>();
@@ -137,13 +199,11 @@ fn combine(d: Vec<HashSet<Pos>>) -> Vec<HashSet<Pos>> {
                     .map(|p| apply_linear_map(&perm, p))
                     .collect::<HashSet<Pos>>();
 
-                let res = mapped_set1.intersection(&d[can2]);
+                let intersection = mapped_set1.intersection(&d[can2]);
 
-                let count = res.count();
-                if count >= MIN_MATCHES_COUNT {
+                if intersection.count() >= min_matches {
                     println!("ADDING {:?} and  {:?} to merged", can1, can2);
                     merged.insert(can1);
-
                     merged.insert(can2);
                     result.push(
                         mapped_set1
@@ -151,9 +211,18 @@ fn combine(d: Vec<HashSet<Pos>>) -> Vec<HashSet<Pos>> {
                             .map(|&d| d)
                             .collect::<HashSet<Pos>>(),
                     );
+
+                    let mut mapped_sensors = sensors[can1]
+                        .clone()
+                        .iter()
+                        .map(|p| apply_linear_map(&perm, p))
+                        .collect_vec();
+                    mapped_sensors.append(&mut sensors[can2].clone());
+                    result_sensors.push(mapped_sensors);
+
                     break 'outer;
                 } else {
-                    println!("Intersection is too small, {}", count)
+                    println!("Intersection is too small")
                 }
             }
         }
@@ -162,9 +231,25 @@ fn combine(d: Vec<HashSet<Pos>>) -> Vec<HashSet<Pos>> {
     for i in 0..(d.len()) {
         if !merged.contains(&i) {
             result.push(d[i].clone());
+            result_sensors.push(sensors[i].clone());
         }
     }
-    result
+
+    assert_eq!(result.len(), result_sensors.len());
+
+    assert_eq!(
+        sensors.iter().map(Vec::len).sum::<usize>(),
+        result_sensors.iter().map(Vec::len).sum::<usize>(),
+        "Number of sensor should remain unchanged"
+    );
+    Scan {
+        beacons: result,
+        sensors: result_sensors,
+    }
+}
+
+fn choose_2_count(set_count: usize) -> usize {
+    (set_count * (set_count - 1)) / 2
 }
 
 fn try_map(
@@ -178,18 +263,9 @@ fn try_map(
     for perm in perms {
         //try mapping p1 to p2
         let p1_mapped = apply(&perm, p1);
-        //println!("P1 is {:?} and mapped {:?}", p1, p1_mapped);
         let m = diff(&p1_mapped, p2);
-
-        //println!("m of {:?} and  {:?} is  {:?}", p1_mapped, p2, m);
-
-        //verify by re-applying to q1 - q2
         let q1_mapped = apply(&perm, q1);
         let m2 = diff(&q1_mapped, q2);
-
-        //println!("m of {:?} and  {:?} is  {:?}", q1_mapped, q2, m2);
-        //println!("m of {:?} and  {:?} is  {:?}", q1_mapped, q2, m2);
-        //println!("m of {:?} and  {:?} is  {:?}", q1_mapped, q2, m2);
         if m == m2 {
             result.push(LinearMap {
                 permutation: perm,
@@ -230,7 +306,7 @@ fn apply_linear_map(map: &LinearMap, p: &Pos) -> Pos {
     (mx + x, my + y, mz + z)
 }
 
-#[test]
+// #[test]
 fn test_try_map() {
     let f = (&(1, 2, 3), &(2, 3, 4));
 
@@ -239,4 +315,20 @@ fn test_try_map() {
     for perm in try_map(f, s) {
         assert_eq!(apply_linear_map(&perm, f.0), *s.0);
     }
+}
+
+#[test]
+fn test_input_part1() {
+    let d = parse(TEST_DATA);
+    let (combined_result, _) = combine_to_one(d, 5);
+
+    assert_eq!(combined_result.len(), 79);
+}
+
+#[test]
+fn input_part1() {
+    let d = parse(INPUT_DATA);
+    let (combined_result, _) = combine_to_one(d, 12);
+
+    assert_eq!(combined_result.len(), 359);
 }
