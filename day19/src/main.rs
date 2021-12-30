@@ -80,7 +80,8 @@ fn distance(p1: &Pos, p2: &Pos) -> u64 {
 }
  */
 fn distance(p1: &Pos, p2: &Pos) -> u32 {
-    (p1.0 - p2.0).pow(2) as u32 + (p1.1 - p2.1).pow(2) as u32 + (p1.2 - p2.2).pow(2) as u32
+    //(p1.0 - p2.0).pow(2) as u32 + (p1.1 - p2.1).pow(2) as u32 + (p1.2 - p2.2).pow(2) as u32
+    (p1.0 - p2.0).abs() as u32 + (p1.1 - p2.1).abs() as u32 + (p1.2 - p2.2).abs() as u32
 }
 
 fn all_permutations() -> Vec<Permutation> {
@@ -100,9 +101,18 @@ fn all_permutations() -> Vec<Permutation> {
 
 fn main() {
     let d = parse(INPUT_DATA);
-    let (combined_result, _) = combine_to_one(d, 12);
+    let (combined_result, sensors) = combine_to_one(d, 12);
 
     println!("Numer of distinct beacons {}", combined_result.len());
+
+    let max_distances = sensors
+        .iter()
+        .tuple_combinations()
+        .map(|(p1, p2)| distance(p1, p2))
+        .max()
+        .unwrap();
+
+    println!("Part2 {}", max_distances);
 }
 
 fn combine_to_one(scan: Scan, min_matches: usize) -> (HashSet<Pos>, Vec<Pos>) {
