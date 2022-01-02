@@ -73,16 +73,16 @@ impl Cube {
         }
     }
 
-    fn assert_no_overlapping(cubes: &Vec<Self>) {
+    fn assert_no_overlapping(cubes: &Vec<Self>, message: &str) {
         let overlapping = cubes
             .iter()
             .tuple_combinations()
-            .filter(|(c1, c2)| !c1.overlaps(c2))
+            .filter(|(c1, c2)| c1.overlaps(c2))
             .collect_vec();
 
         if overlapping.len() != 0 {
-            for c in overlapping {
-                println!("Overlapping {:?} ", c);
+            for c in &overlapping {
+                println!("{}:Overlapping {:?} ", message, c);
             }
         }
 
@@ -124,7 +124,7 @@ impl Cube {
             println!("Original {:?}", self);
             println!("Split to {:?} items:  {:?}", res.len(), res);
         }
-        Cube::assert_no_overlapping(&res);
+        Cube::assert_no_overlapping(&res, r#"Subtract"#);
 
         assert_eq!(self.len(), c, "splitting shouldn't change the size");
         assert!(
@@ -182,16 +182,16 @@ fn new_from_file(content: &str) -> Vec<Cube> {
 
         for existing in result {
             for piece in existing.subtract(&cube) {
-                if !piece.overlaps(&cube) {
-                    n_result.push(piece);
-                }
+                //if !piece.overlaps(&cube) {
+                n_result.push(piece);
+                //}
             }
         }
         if add {
             n_result.push(cube);
         }
 
-        Cube::assert_no_overlapping(&n_result);
+        Cube::assert_no_overlapping(&n_result, "Final");
         result = n_result;
     }
 
@@ -228,7 +228,7 @@ mod tests {
     }
 
     #[test]
-    fn input_prt1() {
+    fn input_part1() {
         const INPUT_DATA: &str = include_str!("input.txt");
         let result = new_from_file(INPUT_DATA);
 
@@ -236,7 +236,7 @@ mod tests {
         assert_eq!(c, 527915);
     }
 
-    #[test]
+    //#[test]
     fn test3_part2() {
         const TEST3_DATA: &str = include_str!("test3.txt");
         let result = new_from_file(TEST3_DATA);
