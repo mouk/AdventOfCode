@@ -30,6 +30,10 @@ struct Instr {
 struct Program {
     instructions: Vec<Instr>,
 }
+struct RunResult{
+    acc:i32,
+    terminated: bool
+}
 impl Program {
     fn new(input: &str) -> Self {
         let lines = input
@@ -48,13 +52,24 @@ impl Program {
 }
 
 impl Program {
-    fn run(&self) -> i32 {
+    fn run(&self) -> RunResult {
         let mut acc: i32 = 0;
         let mut offset: usize = 0;
         let mut visited = HashSet::new();
         loop {
+            
+            if offset == self.instructions.len() {
+                return RunResult{
+                    acc:acc,
+                    terminated: true
+                }
+            }
+
             if visited.contains(&offset) {
-                break;
+                return RunResult{
+                    acc:acc,
+                    terminated: false
+                }
             }
             visited.insert(offset.clone());
             let curr = &self.instructions[offset];
@@ -67,49 +82,25 @@ impl Program {
                 _ => offset += 1,
             }
         }
-        acc
     }
 
-    fn fix_and_run(&self) -> i32 {
-        let inst_count = self.instructions.len();
-
+    fn fix_and_run(&mut self) -> i32 {
         for fixed_index in 0..self.instructions.len() {
             if self.instructions[fixed_index].op == Op::Acc {
                 continue;
             }
+            let backup = self.instructions[fixed_index].op;
 
-            let mut acc: i32 = 0;
-            let mut offset: usize = 0;
-            let mut visited = HashSet::new();
-
-            loop {
-                if offset == inst_count {
-                    return acc;
-                }
-                if visited.contains(&offset) {
-                    break;
-                }
-                visited.insert(offset.clone());
-                let curr = &self.instructions[offset];
-                let arg = curr.arg;
-                let op = if fixed_index == offset {
-                    if curr.op == Op::Jmp {
-                        Op::Nop
-                    } else {
-                        Op::Jmp
-                    }
-                } else {
-                    curr.op
-                };
-
-                match op {
-                    Op::Acc => {
-                        acc += arg;
-                        offset += 1
-                    }
-                    Op::Jmp => offset = (arg + (offset as i32)) as usize,
-                    _ => offset += 1,
-                }
+            self.instructions[fixed_index].op =  if  self.instructions[fixed_index].op == Op::Jmp {
+                Op::Nop
+            } else {
+                Op::Jmp
+            };
+            let result = self.run();
+            self.instructions[fixed_index].op  = backup;
+            
+            if result.terminated {
+                return result.acc
             }
         }
         unreachable!()
@@ -117,9 +108,9 @@ impl Program {
 }
 
 fn main() {
-    let p = Program::new(INPUT_DATA);
+    let mut p = Program::new(INPUT_DATA);
     let result = p.run();
-    println!("Part 1: {}", result);
+    println!("Part 1: {}", result.acc);
     let result = p.fix_and_run();
     println!("Part 2: {}", result);
 }
