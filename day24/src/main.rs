@@ -1,6 +1,6 @@
 use std::fmt::{Display, Error, Formatter};
+use rayon::prelude::*;
 
-const TEST_DATA: &str = include_str!("test.txt");
 const INPUT_DATA: &str = include_str!("input.txt");
 #[derive(Debug, Clone, Copy)]
 enum Variable {
@@ -142,6 +142,7 @@ fn parse(input: &str) -> Vec<Op> {
         .collect()
 }
 fn main() {
+    /*
     let ops = parse(TEST_DATA);
 
     for i in 0..10 {
@@ -152,19 +153,40 @@ fn main() {
             println!(" {}", &state);
         }
     }
-
+ */
+let max: u64 = 99999999999999;
+let ops = parse(INPUT_DATA);
     /*
-    let ops = parse(INPUT_DATA);
-    let max: u64 = 99999999999999;
     for i in 0..max {
-        let maybe_state = State::new(max - i);
+        let current = max - i;
+        let maybe_state = State::new(current);
         if let Some(mut state) = maybe_state {
             state.apply_all(&ops);
             if state.is_valid() {
-                println!("input {}, state {}", max - i, &state);
+                println!("input {}, state {}", current, &state);
                 return;
             }
         }
+        println!("It's not {}", current);
     }
     */
+    let vec = (0..(max/10)).collect::<Vec<_>>();
+
+    let result = vec.par_iter().find_last(|&i| {
+        let current = max - *i;
+        let maybe_state = State::new(current);
+        if let Some(mut state) = maybe_state {
+            state.apply_all(&ops);
+            if state.is_valid() {
+                println!("input {}, state {}", current, &state);
+                return true;
+            }
+            
+        }
+        false
+  });
+  //vec.par_sort_unstable();
+
+  println!("result {:?}", result);
+    
 }

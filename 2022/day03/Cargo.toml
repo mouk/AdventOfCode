@@ -1,5 +1,5 @@
 [package]
-name = "day22"
+name = "day03"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,4 +7,3 @@ edition = "2021"
 
 [dependencies]
 itertools = "0.10.1"
-min-max= "*"
