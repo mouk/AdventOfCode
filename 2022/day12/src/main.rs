@@ -1,32 +1,30 @@
-use std::{collections::BinaryHeap, cmp::Ordering, ops::Index};
+use std::{cmp::Ordering, collections::BinaryHeap};
 
-#[derive(Debug)]
-struct Edge {
-    node: usize,
-    cost: usize,
-}
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 struct State {
     cost: usize,
     position: usize,
 }
 
-
 #[derive(Clone, Debug)]
 struct RiskMap {
     start: usize,
     target: usize,
     data: Vec<usize>,
-    width: usize,
-    height: usize
+    width: usize
 }
 
 impl RiskMap {
-   fn print(&self) -> String {
+    fn print(&self) -> String {
         let mut s = String::new();
         for i in 0..self.len() {
-           
-            let c = if  i == self.start {'S'} else if i == self.target {'E'} else {char::from_u32(97 + self.data[i] as u32).unwrap()};
+            let c = if i == self.start {
+                'S'
+            } else if i == self.target {
+                'E'
+            } else {
+                char::from_u32(97 + self.data[i] as u32).unwrap()
+            };
             s.push_str(&c.to_string());
             s.push_str(" ");
             if (i + 1) % self.width == 0 {
@@ -37,52 +35,48 @@ impl RiskMap {
     }
 
     fn new_from_file_content(content: &str) -> Self {
-
         let mut start = 1000;
         let mut target = 10000;
 
         let width = content.find('\n').unwrap();
 
         let data: Vec<usize> = content
-        .chars()
-        .filter(|&x| x != '\n')
-        .enumerate()
-        .map(|(index,c)|{
-            if c == 'S' {
-                start = index;
-                return 'a';
-            }else if c == 'E'{
-                target = index;
-                return 'z'; 
-            }
-            c
-        })
-        .map(|c| c as usize - 97)
-        .collect();
+            .chars()
+            .filter(|&x| x != '\n')
+            .enumerate()
+            .map(|(index, c)| {
+                if c == 'S' {
+                    start = index;
+                    return 'a';
+                } else if c == 'E' {
+                    target = index;
+                    return 'z';
+                }
+                c
+            })
+            .map(|c| c as usize - 97)
+            .collect();
 
-        let height = data.len()/width;
-
-        println!("count: {}, width: {}, height {}",data.len(),  width, height);
+        println!("count: {}, width: {}", data.len(), width);
         RiskMap {
             start,
             target,
             data,
-            width,
-            height
+            width
         }
     }
 
     fn len(&self) -> usize {
         self.data.len()
     }
-    fn get_adj(&self) -> Vec<Vec<Edge>> {
+    fn get_adj(&self) -> Vec<Vec<usize>> {
         (00..(self.data.len()))
             .collect::<Vec<usize>>()
             .iter()
             .map(|l| self.get_neighbors(*l))
-            .collect::<Vec<Vec<Edge>>>()
+            .collect::<Vec<Vec<usize>>>()
     }
-    fn get_neighbors(&self, index: usize) -> Vec<Edge> {
+    fn get_neighbors(&self, index: usize) -> Vec<usize> {
         let mut result: Vec<_> = Vec::new();
         let w = self.width;
         //north
@@ -107,18 +101,13 @@ impl RiskMap {
         }
         let current_signal = self.data[index];
 
-      
         result
-        .iter()
-        .filter(|&i| self.data[*i] < 2 + current_signal)
-        .map(|e| Edge {
-            node: *e,
-            cost: 1,
-        })
-        .collect()
+            .iter()
+            .filter(|&i| self.data[*i] < 2 + current_signal)
+            .map(|e| *e)
+            .collect()
     }
 }
-
 
 // The priority queue depends on `Ord`.
 // Explicitly implement the trait so the queue becomes a min-heap
@@ -142,17 +131,15 @@ impl PartialOrd for State {
     }
 }
 
-
-
 // Dijkstra's shortest path algorithm.
 
 // Start at `start` and use `dist` to track the current shortest distance
 // to each node. This implementation isn't memory-efficient as it may leave duplicate
 // nodes in the queue. It also uses `usize::MAX` as a sentinel value,
 // for a simpler implementation.
-fn shortest_path(adj_list: &Vec<Vec<Edge>>, start: usize, goal: usize) -> Option<usize> {
+fn shortest_path(adj_list: &Vec<Vec<usize>>, start: usize, goal: usize) -> Option<usize> {
     // dist[node] = current shortest distance from `start` to `node`
-    let mut dist: Vec<_> = (0..adj_list.len()).map(|_| 100).collect();
+    let mut dist: Vec<_> = (0..adj_list.len()).map(|_| usize::MAX).collect();
 
     let mut heap = BinaryHeap::new();
 
@@ -167,16 +154,6 @@ fn shortest_path(adj_list: &Vec<Vec<Edge>>, start: usize, goal: usize) -> Option
     while let Some(State { cost, position }) = heap.pop() {
         // Alternatively we could have continued to find all shortest paths
         if position == goal {
-            let mut s = String::new();
-            for i in 0..dist.len() {
-                s.push_str(&dist[i].to_string());
-                s.push_str("\t");
-                if (i + 1) % 96 == 0 {
-                    s.push_str("\n");
-                }
-            }
-            
-            println!("{}", s.to_string());
             return Some(cost);
         }
 
@@ -189,8 +166,8 @@ fn shortest_path(adj_list: &Vec<Vec<Edge>>, start: usize, goal: usize) -> Option
         // a lower cost going through this node
         for edge in &adj_list[position] {
             let next = State {
-                cost: cost + edge.cost,
-                position: edge.node,
+                cost: cost + 1,
+                position: *edge,
             };
 
             // If so, add it to the frontier and continue
@@ -206,14 +183,22 @@ fn shortest_path(adj_list: &Vec<Vec<Edge>>, start: usize, goal: usize) -> Option
     None
 }
 
-
-
-
 fn main() {
-
-    const INPUT:&str  = include_str!("input.txt");
-    let m = RiskMap::new_from_file_content(INPUT);
-    println!("{}", &m.print());
+    const INPUT: &str = include_str!("input.txt");
+    let m = &mut RiskMap::new_from_file_content(INPUT);
     let costs = shortest_path(&m.get_adj(), m.start, m.target);
-    println!("Hello, world! {:?}", costs);
+    println!("Part 1 {:?}", costs);
+
+    let data = m.data.clone();
+    let p2= (0..(m.len()))
+    .filter(|i|  data[*i]== 0)
+    .map(|s| {
+        m.start = s;
+        shortest_path(&m.get_adj(), m.start, m.target)
+    })
+    .flatten()
+    .min();
+
+    println!("Part 2 {:?}", p2);
+    
 }
