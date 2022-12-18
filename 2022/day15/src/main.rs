@@ -12,6 +12,11 @@ struct Sensor{
     beacon: Point,
     radius: usize
 }
+#[derive(Debug)]
+struct Range{
+    start:i32,
+    end:i32
+}
 
 type Point = (i32,i32);
 
@@ -51,65 +56,62 @@ impl Sensor{
     
 }
 
-fn get_intersection_with_y(sensors: &Vec<Sensor>, y:i32)-> HashSet<Point>{
+fn get_intersection_with_y(sensors: &Vec<Sensor>, y:i32)-> Vec<Range>{
 
-    let mut result = HashSet::new();
+    let mut result:Vec<Range> = Vec::new();
     for sensor in sensors{
         let base_x = sensor.sensor.0;
-        for i in 0..=sensor.radius{
-            if  sensor.is_in_radius(&(base_x + i as i32, y)){
-                result.insert((base_x + i as i32, y));
-                result.insert((base_x - i as i32, y));
-            }else{
-                break;
-            }
+        let  distance =  Sensor::manhattan_distance(&sensor.sensor, &(base_x,y));
+
+        if distance > sensor.radius {
+            continue;
+        }
+        let range_radius = sensor.radius - distance;
+        let start = base_x - range_radius as i32;
+        let end = base_x + range_radius as i32;
+
+        if result.iter().all(|r| (start < r.start || r.end < end)){
+            result.push(Range{start,end});
         }
     }
-    for sensor in sensors{
-        result.remove(&sensor.beacon);
 
-    } 
+    //println!("Intersection for row {} is {:?}",y,&result);
     result
 }
-fn get_intersection_or_beacon_with_y(sensors: &Vec<Sensor>, y:i32)-> HashSet<Point>{
+fn find_gap(points: &Vec<Range>, y:i32)-> Option<Point>{
+    let start = points.iter().map(|r| r.start).min().unwrap();
+    let end = points.iter().map(|r| r.end).max().unwrap();
 
-    let mut result = HashSet::new();
-    for sensor in sensors{
-        let base_x = sensor.sensor.0;
-        for i in 0..=sensor.radius{
-            if  sensor.is_in_radius(&(base_x + i as i32, y)){
-                result.insert((base_x + i as i32, y));
-                result.insert((base_x - i as i32, y));
-            }else{
-                break;
+
+    let mut i = start;
+    while start <= i && i < end{
+        let mut found = false;
+        for range in points{
+            if range.start <= i && i < range.end{
+                found = true;
+                i = range.end+1;
             }
         }
-    }
-    result
-}
-fn find_gap(points: &HashSet<Point>, y:i32)-> Option<Point>{
-    let mut xs = points.iter().map(|(x,y)| *x).collect::<Vec<_>>();
-    xs.sort();
-    let mut start = xs[0] - 1;
-    for i in xs{
-        start += 1;
-        if start != i{
-            return Some((start,y));
+        if !found {
+            return Some((i,y))
         }
     }
+    
     None
+    
+    
 }
 fn main() {
     let sensors = Sensor::from_text(INPUT_DATA);
     println!("{} sensors found", sensors.len());
-    /*
-    let set = get_intersection_with_y(&sensors, 2000000);
-    println!("Part 1: {}", set.len() );
- */
-    for i in 0 ..4000000{
-        let set = get_intersection_or_beacon_with_y(&sensors, i);
-        if let Some(gap) = find_gap(&set, i){
-            println!("Part 2: {:?}", gap);
+
+    let factor = 4000000;
+    let max = factor;
+    for index in 0..max{
+        let i = max - index;
+        let set = get_intersection_with_y(&sensors, i);
+        if let Some((x,y)) = find_gap(&set, i){
+            println!("Part 2: {} {} {:?}", x,y, x  as i64 * factor as i64 + y as i64);
             return;
         }else{
             println!("{} done", i);
